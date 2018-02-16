@@ -68,7 +68,6 @@ t_list1		*read_to_buff(int fd, char buffer[BUFF_SIZE + 1], t_list1 *first, int *
 {
 	int		read_res;
 	t_list1	*temp;
-	t_list1	*new_elem;
 
 	read_res = read(fd, buffer, BUFF_SIZE);
 	if (read_res > 0)
@@ -78,7 +77,7 @@ t_list1		*read_to_buff(int fd, char buffer[BUFF_SIZE + 1], t_list1 *first, int *
 		*error = 0;
 		return (0);
 	}
-	new_elem = NULL;
+	temp = NULL;
 	if (!first)
 	{
 		if ((first = create_elem(fd, buffer, error)))
@@ -96,49 +95,48 @@ t_list1		*read_to_buff(int fd, char buffer[BUFF_SIZE + 1], t_list1 *first, int *
 			}
 			temp = temp->next;
 		}
-		if ((new_elem = create_elem(fd, buffer, error)))
+		if ((temp = create_elem(fd, buffer, error)))
 		{
-			temp->next = new_elem;
-			new_elem->next = NULL;
+			first->next = temp;
 		}
 	}
-	return (new_elem);
+	return (temp);
 }
 
-int		get_next_line_helper(const int fd, char **line, t_list1	*read_res)
+int		get_next_line_helper(const int fd, char **line)
 {
 	char				*nl_point;
 	int					error;
 	char				buffer[BUFF_SIZE + 1];
-	static t_list1		*buff;
+	static t_list1		*first;
 
-	if (!buff)
+	if (!first || !first->content[0])
 	{
-		if (!(read_res = read_to_buff(fd, buffer, buff, &error)))
+		if (!first)
+			first = NULL;
+		if (!(first = read_to_buff(fd, buffer, first, &error)))
 			return (error);
 	}
-	if ((nl_point = ft_strchr(read_res->content, '\n')))
+	if ((nl_point = ft_strchr(first->content, '\n')))
 	{
-		if (!(handle_memory(line, nl_point - read_res->content)))
+		if (!(handle_memory(line, nl_point - first->content)))
 			return (-1);
-		ft_strncat(*line, buffer, nl_point - read_res->content);
-		ft_memmove(read_res->content, nl_point + 1, ft_strlen(read_res->content) -
-		(nl_point - read_res->content));
+		ft_strncat(*line, buffer, nl_point - first->content);
+		ft_memmove(first->content, nl_point + 1, ft_strlen(first->content) -
+		(nl_point - first->content));
 		return (1);
 	}
-
-	if (!(handle_memory(line, ft_strlen(read_res->content))))
+	if (!(handle_memory(line, ft_strlen(first->content))))
 		return (-1);
-	ft_strncat(*line, read_res->content, ft_strlen(read_res->content));
-	ft_strclr(read_res->content);
-	get_next_line_helper(fd, line, read_res);
+	ft_strncat(*line, first->content, ft_strlen(first->content));
+	ft_strclr(first->content);
+	get_next_line_helper(fd, line);
 	return (1);
 }
 
 int		get_next_line(const int fd, char **line)
 {
 	int		res;
-	t_list1	*read_res;
 
 	if (fd < 0)
 		return (-1);
@@ -146,8 +144,7 @@ int		get_next_line(const int fd, char **line)
 		return (-1);
 	if (*line)
 		*line = NULL;
-	read_res = NULL;
-	res = get_next_line_helper(fd, line, read_res);
+	res = get_next_line_helper(fd, line);
 	printf("%s\n", *line);
 	return (res);
 }
