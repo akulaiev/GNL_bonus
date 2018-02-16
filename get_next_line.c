@@ -97,7 +97,8 @@ t_list1		*read_to_buff(int fd, char buffer[BUFF_SIZE + 1], t_list1 *first, int *
 		}
 		if ((temp = create_elem(fd, buffer, error)))
 		{
-			first->next = temp;
+			temp->next = first;
+			first = temp;
 		}
 	}
 	return (temp);
