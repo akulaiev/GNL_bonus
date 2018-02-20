@@ -13,131 +13,103 @@
 #include "get_next_line.h"
 #include <stdio.h>
 
-int		handle_memory_helper(char **line, size_t plus_size, size_t prev_size)
+char		*ft_realloc(char *line, size_t old, size_t new)
 {
-	char	temp_str[prev_size];
+	char *temp;
 
-	if (!*line)
-	{
-		if ((*line = (char*)malloc(sizeof(char) * plus_size)))
-			return (1);
-	}
-	else
-	{
-		ft_strcpy(temp_str, *line);
-		ft_strclr(*line);
-		ft_strdel(line);
-		if ((*line = (char*)malloc(sizeof(char) * plus_size + prev_size)))
-		{
-			ft_strcpy(*line, temp_str);
-			return (1);
-		}
-	}
-	return (0);
+	if ((new == 0 || new <= old) && line)
+		return (line);
+	if (!line)
+		return (ft_memalloc(new));
+	temp = (char*)malloc(new);
+	ft_strcpy(temp, line);
+	free(line);
+	ft_strcpy(line, temp);
+	return (line);
 }
 
-int		handle_memory(char **line, size_t plus_size)
-{
-	size_t	prev_size;
-	int		mem_res;
-
-	if (!*line)
-		prev_size = 0;
-	else
-		prev_size = ft_strlen(*line);
-	mem_res = handle_memory_helper(line, plus_size, prev_size);
-	return (mem_res);
-}
-
-int		get_next_line_helper(const int fd, char **line, char buffer[BUFF_SIZE + 1])
+int			get_next_line_h(const int fd, char **line, char buf[BUFF_SIZE + 1])
 {
 	char		*nl_point;
 	int			read_res;
 
-	if (!buffer[0])
+	if (!buf[0])
 	{
-		read_res = read(fd, buffer, BUFF_SIZE);
+		read_res = read(fd, buf, BUFF_SIZE);
 		if (read_res > 0)
-			buffer[read_res] = '\0';
+			buf[read_res] = '\0';
 		else
 			return (read_res);
 	}
-	if ((nl_point = ft_strchr(buffer, '\n')))
+	if ((nl_point = ft_strchr(buf, '\n')))
 	{
-		if (!(handle_memory(line, nl_point - buffer)))
+		if (!(*line = ft_realloc(*line, ft_strlen(*line), nl_point - buf)))
 			return (-1);
-		ft_strncat(*line, buffer, nl_point - buffer);
-		ft_memmove(buffer, nl_point + 1, ft_strlen(buffer) -
-		(nl_point - buffer));
+		ft_strncat(*line, buf, nl_point - buf);
+		ft_memmove(buf, nl_point + 1, ft_strlen(buf) - (nl_point - buf));
 		return (1);
 	}
-	if (!(handle_memory(line, ft_strlen(buffer))))
+	if (!(*line = ft_realloc(*line, ft_strlen(*line), ft_strlen(buf))))
 		return (-1);
-	ft_strncat(*line, buffer, ft_strlen(buffer));
-	ft_strclr(buffer);
-	get_next_line_helper(fd, line, buffer);
+	ft_strncat(*line, buf, ft_strlen(buf));
+	ft_strclr(buf);
+	get_next_line_h(fd, line, buf);
 	return (1);
 }
 
-int		get_next_line(const int fd, char **line)
+t_list1		*create_elem(int fd, t_list1 *elem, t_list1 *first, int *error)
 {
-	int				read_res;
+	elem = NULL;
+	if (!first)
+	{
+		if (!(elem = (t_list1*)malloc(sizeof(t_list1))))
+		{
+			*error = -1;
+			return (NULL);
+		}
+		elem->content[0] = '\0';
+		elem->list_fd = fd;
+		elem->next = NULL;
+	}
+	else
+	{
+		if (!(elem = (t_list1*)malloc(sizeof(t_list1))))
+		{
+			*error = -1;
+			return (NULL);
+		}
+		elem->content[0] = '\0';
+		elem->list_fd = fd;
+		elem->next = first;
+	}
+	return (elem);
+}
+
+int			get_next_line(const int fd, char **line)
+{
+	int				error;
 	static t_list1	*first;
 	t_list1			*current_elem;
 
-	if (fd < 0 || !line)
+	if (fd < 0 || !line || BUFF_SIZE < 1)
 		return (-1);
-	if (*line)
-		*line = NULL;
+	*line = NULL;
+	current_elem = NULL;
 	if (!first)
 	{
-		if (!(first = (t_list1*)malloc(sizeof(t_list1))))
-			return (-1);
-		if ((read_res = read(fd, first->content, BUFF_SIZE)) > 0)
-		{
-			first->content[read_res] = '\0';
-			first->list_fd = fd;
-			first->next = NULL;
-			current_elem = first;
-		}
-		else
-		{
-			free(first);
-			return (read_res);
-		}
+		if (!(first = create_elem(fd, current_elem, first, &error)))
+			return (error);
 	}
-	if (first && first->list_fd == fd)
-		current_elem = first;
-	if (first && first->list_fd != fd)
+	current_elem = first;
+	while (current_elem->next)
 	{
-		current_elem = first;
-		while (current_elem->next)
-		{	
-			if (current_elem->list_fd == fd)
-			{
-				read_res = get_next_line_helper(fd, line, current_elem->content);
-				return (read_res);
-			}
-			current_elem = current_elem->next;
-		}
-		if (current_elem->list_fd != fd)
-		{
-			if (!(current_elem = (t_list1*)malloc(sizeof(t_list1))))
-				return (-1);
-			if ((read_res = read(fd, current_elem->content, BUFF_SIZE)) > 0)
-			{
-				current_elem->content[read_res] = '\0';
-				current_elem->list_fd = fd;
-				current_elem->next = first;
-				first = current_elem;
-			}
-			else
-			{
-				free(current_elem);
-				return (read_res);
-			}
-		}
+		if (current_elem->list_fd == fd)
+			return (get_next_line_h(fd, line, current_elem->content));
+		current_elem = current_elem->next;
 	}
-	read_res = get_next_line_helper(fd, line, current_elem->content);
-	return (read_res);
+	if ((current_elem = create_elem(fd, current_elem, first, &error)))
+		first = current_elem;
+	else
+		return (error);
+	return (get_next_line_h(fd, line, current_elem->content));
 }
