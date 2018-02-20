@@ -64,7 +64,6 @@ int		main(void)
 			err++;
 		ret_c++;
 	}
-	printf("%i\n", err);
 	if (err > 0)
 		ft_putendl("Error? Multiple fd not suported? :(");
 	if (ret_c != 6)
