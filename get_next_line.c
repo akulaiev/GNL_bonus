@@ -24,8 +24,7 @@ char		*ft_realloc(char *line, size_t old, size_t new)
 	temp = (char*)malloc(new);
 	ft_strcpy(temp, line);
 	free(line);
-	ft_strcpy(line, temp);
-	return (line);
+	return (temp);
 }
 
 int			get_next_line_h(const int fd, char **line, char buf[BUFF_SIZE + 1])
