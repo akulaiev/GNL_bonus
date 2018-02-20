@@ -56,31 +56,16 @@ int			get_next_line_h(const int fd, char **line, char buf[BUFF_SIZE + 1])
 	return (1);
 }
 
-t_list1		*create_elem(int fd, t_list1 *elem, t_list1 *first, int *error)
+t_list1		*create_elem(int fd, t_list1 *elem, int *error)
 {
-	elem = NULL;
-	if (!first)
+	if (!(elem = (t_list1*)malloc(sizeof(t_list1))))
 	{
-		if (!(elem = (t_list1*)malloc(sizeof(t_list1))))
-		{
-			*error = -1;
-			return (NULL);
-		}
-		elem->content[0] = '\0';
-		elem->list_fd = fd;
-		elem->next = NULL;
+		*error = -1;
+		return (NULL);
 	}
-	else
-	{
-		if (!(elem = (t_list1*)malloc(sizeof(t_list1))))
-		{
-			*error = -1;
-			return (NULL);
-		}
-		elem->content[0] = '\0';
-		elem->list_fd = fd;
-		elem->next = first;
-	}
+	elem->content[0] = '\0';
+	elem->list_fd = fd;
+	elem->next = NULL;
 	return (elem);
 }
 
@@ -96,7 +81,7 @@ int			get_next_line(const int fd, char **line)
 	current_elem = NULL;
 	if (!first)
 	{
-		if (!(first = create_elem(fd, current_elem, first, &error)))
+		if (!(first = create_elem(fd, current_elem, &error)))
 			return (error);
 	}
 	current_elem = first;
@@ -106,8 +91,11 @@ int			get_next_line(const int fd, char **line)
 			return (get_next_line_h(fd, line, current_elem->content));
 		current_elem = current_elem->next;
 	}
-	if ((current_elem = create_elem(fd, current_elem, first, &error)))
+	if ((current_elem = create_elem(fd, current_elem, &error)))
+	{
 		first = current_elem;
+		current_elem->next = first;
+	}
 	else
 		return (error);
 	return (get_next_line_h(fd, line, current_elem->content));
