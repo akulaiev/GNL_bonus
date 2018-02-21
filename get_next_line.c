@@ -65,7 +65,6 @@ t_list1		*create_elem(int fd, t_list1 *elem, int *error)
 	}
 	elem->content[0] = '\0';
 	elem->list_fd = fd;
-	elem->next = NULL;
 	return (elem);
 }
 
@@ -78,23 +77,24 @@ int			get_next_line(const int fd, char **line)
 	if (fd < 0 || !line || BUFF_SIZE < 1)
 		return (-1);
 	*line = NULL;
-	current_elem = NULL;
 	if (!first)
 	{
-		if (!(first = create_elem(fd, current_elem, &error)))
+		if ((first = create_elem(fd, first, &error)))
+			first->next = NULL;
+		else
 			return (error);
 	}
 	current_elem = first;
-	while (current_elem->next)
+	while (current_elem)
 	{
 		if (current_elem->list_fd == fd)
-			return (get_next_line_h(fd, line, current_elem->content));
+			return (get_next_line_h(fd, line, current_elem->content));	
 		current_elem = current_elem->next;
 	}
 	if ((current_elem = create_elem(fd, current_elem, &error)))
 	{
-		first = current_elem;
 		current_elem->next = first;
+		first = current_elem;
 	}
 	else
 		return (error);
