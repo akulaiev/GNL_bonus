@@ -11,7 +11,6 @@
 /* ************************************************************************** */
 
 #include "get_next_line.h"
-#include <stdio.h>
 
 char		*ft_realloc(char *line, size_t old, size_t new)
 {
@@ -20,49 +19,45 @@ char		*ft_realloc(char *line, size_t old, size_t new)
 	if ((new == 0 || new <= old) && line)
 		return (line);
 	if (!line)
-		return (ft_memalloc(new));
-	temp = (char*)malloc(new);
+		return (ft_memalloc(new + 1));
+	temp = (char*)malloc(new + 1);
 	ft_strcpy(temp, line);
 	free(line);
 	return (temp);
 }
 
-int			get_next_line_h(const int fd, char **line, char buf[BUFF_SIZE + 1])
+int			get_next_line_h(const int fd, char **l, char buf[BUFF_SIZE + 1])
 {
-	char		*nl_point;
+	char		*np;
 	int			read_res;
 
 	if (!buf[0])
 	{
-		read_res = read(fd, buf, BUFF_SIZE);
-		if (read_res > 0)
+		if ((read_res = read(fd, buf, BUFF_SIZE)) > 0)
 			buf[read_res] = '\0';
 		else
 			return (read_res);
 	}
-	if ((nl_point = ft_strchr(buf, '\n')))
+	if ((np = ft_strchr(buf, '\n')))
 	{
-		if (!(*line = ft_realloc(*line, ft_strlen(*line), nl_point - buf)))
+		if (!(*l = ft_realloc(*l, ft_strlen(*l), ft_strlen(*l) + np - buf)))
 			return (-1);
-		ft_strncat(*line, buf, nl_point - buf);
-		ft_memmove(buf, nl_point + 1, ft_strlen(buf) - (nl_point - buf));
+		ft_strncat(*l, buf, np - buf);
+		ft_memmove(buf, np + 1, ft_strlen(buf) - (np - buf));
 		return (1);
 	}
-	if (!(*line = ft_realloc(*line, ft_strlen(*line), ft_strlen(buf))))
+	if (!(*l = ft_realloc(*l, ft_strlen(*l), ft_strlen(*l) + ft_strlen(buf))))
 		return (-1);
-	ft_strncat(*line, buf, ft_strlen(buf));
+	ft_strcat(*l, buf);
 	ft_strclr(buf);
-	get_next_line_h(fd, line, buf);
+	get_next_line_h(fd, l, buf);
 	return (1);
 }
 
-t_list1		*create_elem(int fd, t_list1 *elem, int *error)
+t_list1		*create_elem(int fd, t_list1 *elem)
 {
 	if (!(elem = (t_list1*)malloc(sizeof(t_list1))))
-	{
-		*error = -1;
 		return (NULL);
-	}
 	elem->content[0] = '\0';
 	elem->list_fd = fd;
 	return (elem);
@@ -70,7 +65,6 @@ t_list1		*create_elem(int fd, t_list1 *elem, int *error)
 
 int			get_next_line(const int fd, char **line)
 {
-	int				error;
 	static t_list1	*first;
 	t_list1			*current_elem;
 
@@ -79,24 +73,20 @@ int			get_next_line(const int fd, char **line)
 	*line = NULL;
 	if (!first)
 	{
-		if ((first = create_elem(fd, first, &error)))
-			first->next = NULL;
-		else
-			return (error);
+		if (!(first = create_elem(fd, first)))
+			return (-1);
+		first->next = NULL;
 	}
 	current_elem = first;
 	while (current_elem)
 	{
 		if (current_elem->list_fd == fd)
-			return (get_next_line_h(fd, line, current_elem->content));	
+			return (get_next_line_h(fd, line, current_elem->content));
 		current_elem = current_elem->next;
 	}
-	if ((current_elem = create_elem(fd, current_elem, &error)))
-	{
-		current_elem->next = first;
-		first = current_elem;
-	}
-	else
-		return (error);
+	if (!(current_elem = create_elem(fd, current_elem)))
+		return (-1);
+	current_elem->next = first;
+	first = current_elem;
 	return (get_next_line_h(fd, line, current_elem->content));
 }
